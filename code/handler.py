@@ -36,19 +36,19 @@ def handler(event, context):
 
     try:
         req_type = event["RequestType"]
-    except:
+    except Exception:
         req_type = None
 
     cfn_req_delete(req_type, event, context, responseData, physicalResourceId)
 
     try:
         VpcId = event["ResourceProperties"]["VpcId"]
-    except:
+    except Exception:
         VpcId = None
 
     try:
         ALL = event["ResourceProperties"]["ALL"]
-    except:
+    except Exception:
         ALL = None
 
     if ALL:
@@ -56,7 +56,7 @@ def handler(event, context):
         for VpcId in list_vpcs():
             delete_rules(VpcId)
     elif VpcId:
-        logger.info(f"Processing single VPC only")
+        logger.info(f"Processing single VPC only ({VpcId})")
         delete_rules(VpcId)
     else:
         logger.info(
@@ -94,29 +94,28 @@ def delete_rules(VpcId):
         if sg.ip_permissions:
             logger.info(f"{json.dumps(sg.ip_permissions)}")
             try:
-                sg = resource.SecurityGroup(sgid)
-            except Exception:
-                raise
-
-            try:
                 sg.revoke_ingress(IpPermissions=sg.ip_permissions)
                 logger.info(f"{sgid}: Ingress rules deleted")
             except Exception:
                 logger.info(f"{sgid}: No ingress rules")
                 pass  # We don't' care if there are no rules (MissingParameter)
+        else:
+            logger.info(f"{sgid}: No SG Ingress rules to delete")
 
+        if sg.ip_permissions_egress:
+            logger.info(f"{json.dumps(sg.ip_permissions_egress)}")
             try:
-                sg.revoke_egress(IpPermissions=sg.ip_permissions)
+                sg.revoke_egress(IpPermissions=sg.ip_permissions_egress)
                 logger.info(f"{sgid}: Egress rules deleted")
             except Exception:
                 logger.info(f"{sgid}: No egress rules")
                 pass
         else:
-            logger.info(f"{sgid}: No SG rules to delete")
+            logger.info(f"{sgid}: No SG Egress rules to delete")
 
 
 def cfn_req_delete(req_type, event, context, responseData, physicalResourceId):
-    if req_type != None:
+    if req_type is not None:
         if req_type == "Delete":
             try:
                 cfn_success(event, context, responseData, physicalResourceId)
@@ -128,7 +127,7 @@ def cfn_req_delete(req_type, event, context, responseData, physicalResourceId):
 
 
 def cfn_req_other(req_type, event, context, responseData, physicalResourceId):
-    if req_type != None:
+    if req_type is not None:
         try:
             cfn_success(event, context, responseData, physicalResourceId)
             return
@@ -156,8 +155,8 @@ if __name__ == "__main__":
     """
     event = {
         "ResourceProperties": {
-            # "VpcId": "vpc-1234567890abcdefg",
-            "ALL": True,
+            "VpcId": "vpc-052327ab947dd05ca",
+            # "ALL": True,
         },
     }
     handler(event, None)
